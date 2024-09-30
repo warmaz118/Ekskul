@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+
+    public function dashboard() {
+        return view('users.dashboard');
+    }
+
     // Display a listing of the users
     public function index()
 {
@@ -23,7 +28,7 @@ class UserController extends Controller
     // Show the form for creating a new user
     public function create()
 {
-    $roles = Role::all();
+    $roles = Role::whereIn('id', [1,2])->get();
     return view('users.create', compact('roles'));
 }
 
@@ -45,50 +50,58 @@ class UserController extends Controller
         'password' => Hash::make($request->password),
     ]);
 
-    return response()->json($user, 201);
+    return redirect()->route('users.index')->with('success', 'User created successfully.');
 }
 
     // Display the specified user
     public function show($id)
     {
         $user = User::findOrFail($id);
-        return response()->json($user);
+        return view('users.show', compact('user'));
     }
 
     // Show the form for editing the specified user
     public function edit($id)
     {
-        //
+        $user = User::findOrFail($id); // Cari user berdasarkan ID
+        $roles = Role::whereIn('id', [1,2])->get(); // Ambil semua role dari tabel roles
+        return view('users.edit', compact('user', 'roles'));
     }
 
-    // Update the specified user in storage
+    // Method untuk menangani update data user
     public function update(Request $request, $id)
-{
-    $user = User::findOrFail($id);
+    {
+        $user = User::findOrFail($id);
 
-    $request->validate([
-        'name' => 'sometimes|required|string|max:255',
-        'email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $id,
-        'role_id' => 'sometimes|required|exists:roles,id',
-        'password' => 'sometimes|required|string|min:8',
-    ]);
+        // Validasi input
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $id,
+            'password' => 'nullable|string|min:8|confirmed',
+            'role_id' => 'required|exists:roles,id', // Pastikan role_id ada di tabel roles
+        ]);
 
-    $user->update([
-        'name' => $request->name ?? $user->name,
-        'email' => $request->email ?? $user->email,
-        'role_id' => $request->role_id ?? $user->role_id,
-        'password' => $request->password ? Hash::make($request->password) : $user->password,
-    ]);
+        // Update data user
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
 
-    return response()->json($user);
-}
+        if ($request->filled('password')) {
+            $user->password = bcrypt($validated['password']);
+        }
+
+        $user->role_id = $validated['role_id'];
+        $user->save();
+
+        // Redirect ke halaman index atau menampilkan pesan sukses
+        return redirect()->route('users.index')->with('success', 'User updated successfully.');
+    }
 
     // Remove the specified user from storage
     public function destroy($id)
     {
         $user = User::findOrFail($id);
         $user->delete();
-        return response()->json(null, 204);
+        return redirect()->route('users.index')->with('success', 'User deleted successfully.');
     }
 }
 
