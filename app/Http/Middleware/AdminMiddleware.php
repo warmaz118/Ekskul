@@ -13,7 +13,7 @@ class AdminMiddleware
         // Cek apakah user login
         if (Auth::check()) {
             // Cek role-nya Admin atau Pembimbing
-            if (Auth::user()->role->name === 'Admin' || Auth::user()->role->name === 'Pembimbing') {
+            if (Auth::user()->role->name === 'Admin') {
                 return $next($request);
             }
         }
